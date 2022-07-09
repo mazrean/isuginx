@@ -9,11 +9,13 @@ import (
 )
 
 var (
-	flagFilePath string
+	flagFilePath          string
+	flagAccessLogFilePath string
 )
 
 func init() {
 	flag.StringVar(&flagFilePath, "file", "/etc/nginx/nginx.conf", "nginx config file path")
+	flag.StringVar(&flagAccessLogFilePath, "access-log", "/var/log/nginx/access.log", "nginx access log file path")
 	flag.Parse()
 }
 
@@ -25,6 +27,7 @@ func main() {
 
 	setWorkerRLimitNofile(config)
 	setWorkerConnections(config)
+	setKataribeLogging(config)
 
 	err = gonginx.WriteConfig(config, gonginx.NewStyle(), true)
 	if err != nil {
@@ -100,4 +103,49 @@ func setWorkerConnections(config *gonginx.Config) {
 		Name:       workerConnections,
 		Parameters: []string{workerConnectionsValue},
 	})
+}
+
+const (
+	httpDirective  = "http"
+	logFormat      = "log_format"
+	logKey         = "kataribe"
+	logFormatValue = `'$remote_addr - $remote_user [$time_local] "$request" $status $body_bytes_sent "$http_referer" "$http_user_agent" $request_time'`
+	accessLog      = "access_log"
+)
+
+func setKataribeLogging(config *gonginx.Config) {
+	directives := config.FindDirectives(httpDirective)
+	if len(directives) == 0 {
+		return
+	}
+
+	for _, directive := range directives {
+		httpBlock, ok := directive.GetBlock().(*gonginx.Block)
+		if !ok {
+			continue
+		}
+
+		directives = httpBlock.FindDirectives(logFormat)
+		if len(directives) == 0 {
+			httpBlock.Directives = append(httpBlock.Directives, &gonginx.Directive{
+				Name:       logFormat,
+				Parameters: []string{logKey, logFormatValue},
+			}, &gonginx.Directive{
+				Name:       accessLog,
+				Parameters: []string{flagAccessLogFilePath, logKey},
+			})
+
+			return
+		}
+
+		httpBlock.Directives = append(httpBlock.Directives, &gonginx.Directive{
+			Name:       logFormat,
+			Parameters: []string{logKey, logFormatValue},
+		})
+
+		httpBlock.Directives = append(httpBlock.Directives, &gonginx.Directive{
+			Name:       accessLog,
+			Parameters: []string{flagAccessLogFilePath, logKey},
+		})
+	}
 }
