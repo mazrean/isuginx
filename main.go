@@ -3,6 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
+	"os"
 
 	"github.com/tufanbarisyildirim/gonginx"
 	"github.com/tufanbarisyildirim/gonginx/parser"
@@ -28,6 +30,7 @@ func main() {
 	setWorkerRLimitNofile(config)
 	setWorkerConnections(config)
 	setKataribeLogging(config)
+	setHTTP(config)
 
 	err = gonginx.WriteConfig(config, gonginx.NewStyle(), true)
 	if err != nil {
@@ -130,22 +133,231 @@ func setKataribeLogging(config *gonginx.Config) {
 			httpBlock.Directives = append(httpBlock.Directives, &gonginx.Directive{
 				Name:       logFormat,
 				Parameters: []string{logKey, logFormatValue},
-			}, &gonginx.Directive{
-				Name:       accessLog,
-				Parameters: []string{flagAccessLogFilePath, logKey},
+			})
+		} else {
+			httpBlock.Directives = append(httpBlock.Directives, &gonginx.Directive{
+				Name:       logFormat,
+				Parameters: []string{logKey, logFormatValue},
+			})
+		}
+
+		directives = httpBlock.FindDirectives(accessLog)
+		if len(directives) == 0 {
+			httpBlock.Directives = append(httpBlock.Directives, &gonginx.Directive{
+				Name:       logFormat,
+				Parameters: []string{logKey, logFormatValue},
 			})
 
 			return
 		}
 
 		httpBlock.Directives = append(httpBlock.Directives, &gonginx.Directive{
-			Name:       logFormat,
-			Parameters: []string{logKey, logFormatValue},
-		})
-
-		httpBlock.Directives = append(httpBlock.Directives, &gonginx.Directive{
 			Name:       accessLog,
 			Parameters: []string{flagAccessLogFilePath, logKey},
 		})
+	}
+}
+
+func setHTTP(config *gonginx.Config) {
+	directives := config.FindDirectives(httpDirective)
+	if len(directives) == 0 {
+		return
+	}
+
+	for _, directive := range directives {
+		httpBlock, ok := directive.GetBlock().(*gonginx.Block)
+		if !ok {
+			continue
+		}
+
+		directives = httpBlock.FindDirectives("sendfile")
+		if len(directives) == 0 {
+			httpBlock.Directives = append(httpBlock.Directives, &gonginx.Directive{
+				Name:       "sendfile",
+				Parameters: []string{"on"},
+			})
+		} else {
+			directive, ok := directives[0].(*gonginx.Directive)
+			if ok {
+				directive.Parameters = []string{"on"}
+			}
+		}
+
+		directives = httpBlock.FindDirectives("tcp_nopush")
+		if len(directives) == 0 {
+			httpBlock.Directives = append(httpBlock.Directives, &gonginx.Directive{
+				Name:       "tcp_nopush",
+				Parameters: []string{"on"},
+			})
+		} else {
+			directive, ok := directives[0].(*gonginx.Directive)
+			if ok {
+				directive.Parameters = []string{"on"}
+			}
+		}
+
+		directives = httpBlock.FindDirectives("tcp_nodelay")
+		if len(directives) == 0 {
+			httpBlock.Directives = append(httpBlock.Directives, &gonginx.Directive{
+				Name:       "tcp_nodelay",
+				Parameters: []string{"on"},
+			})
+		} else {
+			directive, ok := directives[0].(*gonginx.Directive)
+			if ok {
+				directive.Parameters = []string{"on"}
+			}
+		}
+
+		directives = httpBlock.FindDirectives("types_hash_max_size")
+		if len(directives) == 0 {
+			httpBlock.Directives = append(httpBlock.Directives, &gonginx.Directive{
+				Name:       "types_hash_max_size",
+				Parameters: []string{"2048"},
+			})
+		} else {
+			directive, ok := directives[0].(*gonginx.Directive)
+			if ok {
+				directive.Parameters = []string{"2048"}
+			}
+		}
+
+		directives = httpBlock.FindDirectives("server_tokens")
+		if len(directives) == 0 {
+			httpBlock.Directives = append(httpBlock.Directives, &gonginx.Directive{
+				Name:       "server_tokens",
+				Parameters: []string{"off"},
+			})
+		} else {
+			directive, ok := directives[0].(*gonginx.Directive)
+			if ok {
+				directive.Parameters = []string{"off"}
+			}
+		}
+
+		directives = httpBlock.FindDirectives("open_file_cache")
+		if len(directives) == 0 {
+			httpBlock.Directives = append(httpBlock.Directives, &gonginx.Directive{
+				Name:       "open_file_cache",
+				Parameters: []string{"max=100", "inactive=20s"},
+			})
+		} else {
+			directive, ok := directives[0].(*gonginx.Directive)
+			if ok {
+				directive.Parameters = []string{"max=100", "inactive=20s"}
+			}
+		}
+
+		directives = httpBlock.FindDirectives("proxy_buffers")
+		if len(directives) == 0 {
+			httpBlock.Directives = append(httpBlock.Directives, &gonginx.Directive{
+				Name:       "proxy_buffers",
+				Parameters: []string{"100 32k"},
+			})
+		} else {
+			directive, ok := directives[0].(*gonginx.Directive)
+			if ok {
+				directive.Parameters = []string{"100 32k"}
+			}
+		}
+
+		directives = httpBlock.FindDirectives("proxy_buffer_size")
+		if len(directives) == 0 {
+			httpBlock.Directives = append(httpBlock.Directives, &gonginx.Directive{
+				Name:       "proxy_buffer_size",
+				Parameters: []string{"32k"},
+			})
+		} else {
+			directive, ok := directives[0].(*gonginx.Directive)
+			if ok {
+				directive.Parameters = []string{"32k"}
+			}
+		}
+
+		directives = httpBlock.FindDirectives("keepalive_timeout")
+		if len(directives) == 0 {
+			httpBlock.Directives = append(httpBlock.Directives, &gonginx.Directive{
+				Name:       "keepalive_timeout",
+				Parameters: []string{"65"},
+			})
+		} else {
+			directive, ok := directives[0].(*gonginx.Directive)
+			if ok {
+				directive.Parameters = []string{"65"}
+			}
+		}
+
+		directives = httpBlock.FindDirectives("keepalive_requests")
+		if len(directives) == 0 {
+			httpBlock.Directives = append(httpBlock.Directives, &gonginx.Directive{
+				Name:       "keepalive_requests",
+				Parameters: []string{"10000"},
+			})
+		} else {
+			directive, ok := directives[0].(*gonginx.Directive)
+			if ok {
+				directive.Parameters = []string{"10000"}
+			}
+		}
+
+		directives = httpBlock.FindDirectives("http2_max_requests")
+		if len(directives) == 0 {
+			httpBlock.Directives = append(httpBlock.Directives, &gonginx.Directive{
+				Name:       "http2_max_requests",
+				Parameters: []string{"10000"},
+			})
+		} else {
+			directive, ok := directives[0].(*gonginx.Directive)
+			if ok {
+				directive.Parameters = []string{"10000"}
+			}
+		}
+
+		directives = httpBlock.FindDirectives("http2_recv_timeout")
+		if len(directives) == 0 {
+			httpBlock.Directives = append(httpBlock.Directives, &gonginx.Directive{
+				Name:       "http2_recv_timeout",
+				Parameters: []string{"600s"},
+			})
+		} else {
+			directive, ok := directives[0].(*gonginx.Directive)
+			if ok {
+				directive.Parameters = []string{"600s"}
+			}
+		}
+
+		directives = httpBlock.FindDirectives("proxy_cache_path")
+		if len(directives) == 0 {
+			httpBlock.Directives = append(httpBlock.Directives, &gonginx.Directive{
+				Name:       "proxy_cache_path",
+				Parameters: []string{"/var/cache/nginx/cache", "levels=1:2", "keys_zone=zone1:1m", "max_size=1g", "inactive=1h"},
+			})
+		} else {
+			directive, ok := directives[0].(*gonginx.Directive)
+			if ok {
+				directive.Parameters = []string{"/var/cache/nginx/cache", "levels=1:2", "keys_zone=zone1:1m", "max_size=1g", "inactive=1h"}
+			}
+		}
+		err := os.MkdirAll("/var/cache/nginx/cache", 0755)
+		if err != nil {
+			log.Printf("[ERROR] Failed to create /var/cache/nginx/cache: %s\n", err)
+		}
+
+		directives = httpBlock.FindDirectives("proxy_temp_path")
+		if len(directives) == 0 {
+			httpBlock.Directives = append(httpBlock.Directives, &gonginx.Directive{
+				Name:       "proxy_temp_path",
+				Parameters: []string{"/var/cache/nginx/tmp"},
+			})
+		} else {
+			directive, ok := directives[0].(*gonginx.Directive)
+			if ok {
+				directive.Parameters = []string{"/var/cache/nginx/tmp"}
+			}
+		}
+		err = os.MkdirAll("/var/cache/nginx/tmp", 0755)
+		if err != nil {
+			log.Printf("[ERROR] Failed to create /var/cache/nginx/tmp: %s\n", err)
+		}
 	}
 }
