@@ -24,6 +24,7 @@ func main() {
 	}
 
 	setWorkerRLimitNofile(config)
+	setWorkerConnections(config)
 
 	err = gonginx.WriteConfig(config, gonginx.NewStyle(), true)
 	if err != nil {
@@ -64,4 +65,39 @@ func setWorkerRLimitNofile(config *gonginx.Config) {
 	}
 
 	directive.Parameters = []string{workerRlimitNofileValue}
+}
+
+const (
+	events                 = "events"
+	workerConnections      = "worker_connections"
+	workerConnectionsValue = "1024"
+)
+
+func setWorkerConnections(config *gonginx.Config) {
+	directives := config.FindDirectives(events)
+	if len(directives) == 0 {
+		config.Directives = append(config.Directives, &gonginx.Directive{
+			Name: "events",
+			Block: &gonginx.Block{
+				Directives: []gonginx.IDirective{
+					&gonginx.Directive{
+						Name:       workerConnections,
+						Parameters: []string{workerConnectionsValue},
+					},
+				},
+			},
+		})
+
+		return
+	}
+
+	block, ok := directives[0].GetBlock().(*gonginx.Block)
+	if !ok {
+		return
+	}
+
+	block.Directives = append(block.Directives, &gonginx.Directive{
+		Name:       workerConnections,
+		Parameters: []string{workerConnectionsValue},
+	})
 }
