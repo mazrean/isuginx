@@ -31,6 +31,7 @@ func main() {
 	setWorkerConnections(config)
 	setKataribeLogging(config)
 	setHTTP(config)
+	setSSL(config)
 
 	err = gonginx.WriteConfig(config, gonginx.NewStyle(), true)
 	if err != nil {
@@ -358,6 +359,33 @@ func setHTTP(config *gonginx.Config) {
 		err = os.MkdirAll("/var/cache/nginx/tmp", 0755)
 		if err != nil {
 			log.Printf("[ERROR] Failed to create /var/cache/nginx/tmp: %s\n", err)
+		}
+	}
+}
+
+func setSSL(config *gonginx.Config) {
+	serverDirectives := config.FindDirectives("server")
+	if len(serverDirectives) == 0 {
+		return
+	}
+
+	for _, serverDirective := range serverDirectives {
+		serverBlock, ok := serverDirective.GetBlock().(*gonginx.Block)
+		if !ok {
+			continue
+		}
+
+		protoDirectives := serverBlock.FindDirectives("ssl_protocols")
+		if len(protoDirectives) == 0 {
+			serverBlock.Directives = append(serverBlock.Directives, &gonginx.Directive{
+				Name:       "ssl_protocols",
+				Parameters: []string{"TLSv1.3", "TLSv1.2"},
+			})
+		} else {
+			protoDirective, ok := protoDirectives[0].(*gonginx.Directive)
+			if ok {
+				protoDirective.Parameters = []string{"TLSv1.3", "TLSv1.2"}
+			}
 		}
 	}
 }
