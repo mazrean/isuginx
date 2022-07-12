@@ -103,10 +103,20 @@ func setWorkerConnections(config *gonginx.Config) {
 		return
 	}
 
-	block.Directives = append(block.Directives, &gonginx.Directive{
-		Name:       workerConnections,
-		Parameters: []string{workerConnectionsValue},
-	})
+	directives = block.FindDirectives(workerConnections)
+	if len(directives) == 0 {
+		block.Directives = append(block.Directives, &gonginx.Directive{
+			Name:       workerConnections,
+			Parameters: []string{workerConnectionsValue},
+		})
+	} else {
+		directive, ok := directives[0].(*gonginx.Directive)
+		if !ok {
+			return
+		}
+
+		directive.Parameters = []string{workerConnectionsValue}
+	}
 }
 
 const (
