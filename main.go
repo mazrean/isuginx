@@ -134,38 +134,32 @@ func setKataribeLogging(config *gonginx.Config) {
 	}
 
 	for _, directive := range directives {
-		httpBlock, ok := directive.GetBlock().(*gonginx.Block)
+		httpBlock, ok := directive.GetBlock().(*gonginx.Http)
 		if !ok {
 			continue
 		}
 
-		directives = httpBlock.FindDirectives(logFormat)
-		if len(directives) == 0 {
-			httpBlock.Directives = append(httpBlock.Directives, &gonginx.Directive{
-				Name:       logFormat,
-				Parameters: []string{logKey, logFormatValue},
-			})
-		} else {
-			httpBlock.Directives = append(httpBlock.Directives, &gonginx.Directive{
-				Name:       logFormat,
-				Parameters: []string{logKey, logFormatValue},
-			})
-		}
+		httpBlock.Directives = append(httpBlock.Directives, &gonginx.Directive{
+			Name:       logFormat,
+			Parameters: []string{logKey, logFormatValue},
+		})
 
 		directives = httpBlock.FindDirectives(accessLog)
 		if len(directives) == 0 {
 			httpBlock.Directives = append(httpBlock.Directives, &gonginx.Directive{
-				Name:       logFormat,
-				Parameters: []string{logKey, logFormatValue},
+				Name:       accessLog,
+				Parameters: []string{flagAccessLogFilePath, logKey},
 			})
 
 			return
-		}
+		} else {
+			directive, ok := directives[0].(*gonginx.Directive)
+			if !ok {
+				return
+			}
 
-		httpBlock.Directives = append(httpBlock.Directives, &gonginx.Directive{
-			Name:       accessLog,
-			Parameters: []string{flagAccessLogFilePath, logKey},
-		})
+			directive.Parameters = []string{flagAccessLogFilePath, logKey}
+		}
 	}
 }
 
