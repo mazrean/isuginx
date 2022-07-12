@@ -176,7 +176,7 @@ func setHTTP(config *gonginx.Config) {
 	}
 
 	for _, directive := range directives {
-		httpBlock, ok := directive.GetBlock().(*gonginx.Block)
+		httpBlock, ok := directive.GetBlock().(*gonginx.Http)
 		if !ok {
 			continue
 		}
